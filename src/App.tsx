@@ -1418,11 +1418,8 @@ export default function App() {
       {renderEditModals()}
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 no-print">
-        <div className="flex items-center gap-3 px-2">
-          <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white">
-            <BookOpen size={24} />
-          </div>
-          <h1 className="text-xl font-bold text-slate-800 leading-tight">Livreiro<br /><span className="text-indigo-600">Consignado</span></h1>
+        <div className="flex flex-col items-center gap-2 px-2 border-b border-slate-100 pb-6 mb-2">
+          <img src="/src/logo.png" alt="Nobel Autores Locais" className="w-full h-auto rounded-lg shadow-sm" />
         </div>
 
         <nav className="flex flex-col gap-2">
