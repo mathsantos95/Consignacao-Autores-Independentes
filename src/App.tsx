@@ -1419,7 +1419,7 @@ export default function App() {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 p-6 flex flex-col gap-8 no-print">
         <div className="flex flex-col items-center gap-2 px-2 border-b border-slate-100 pb-6 mb-2">
-          <img src="/src/logo.png" alt="Nobel Autores Locais" className="w-full h-auto rounded-lg shadow-sm" />
+          <img src="/logo.png" alt="Nobel Autores Locais" className="w-full h-auto rounded-lg shadow-sm" />
         </div>
 
         <nav className="flex flex-col gap-2">
