@@ -292,8 +292,9 @@ export default function App() {
         quantity: Number(s.quantity)
       }));
       (window as any).consignmentSales = consignmentSales; // Temporary store for chart logic
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching data:", error);
+      alert(`Erro ao buscar dados: ${error.message}`);
     }
     setLoading(false);
   };
@@ -316,11 +317,17 @@ export default function App() {
         setSettlementPreview(null);
         fetchData();
       } else {
-        const err = await res.json();
-        alert(err.error || "Erro ao salvar");
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const err = await res.json();
+          alert(err.error || "Erro ao salvar");
+        } else {
+          const text = await res.text();
+          alert(`Erro do servidor (${res.status}): ${text.slice(0, 100)}`);
+        }
       }
-    } catch (error) {
-      alert("Erro de conexão");
+    } catch (error: any) {
+      alert(`Erro de conexão: ${error.message}`);
     }
   };
 
@@ -339,9 +346,9 @@ export default function App() {
         const err = await res.json();
         alert(err.error || "Erro ao excluir o registro.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao deletar:", error);
-      alert("Erro de conexão ao tentar excluir.");
+      alert(`Erro de conexão: ${error.message}`);
     }
   };
 
@@ -357,8 +364,8 @@ export default function App() {
         body: JSON.stringify({ payment_date, payment_method })
       });
       fetchData();
-    } catch (error) {
-      alert("Erro ao processar pagamento");
+    } catch (error: any) {
+      alert(`Erro ao processar pagamento: ${error.message}`);
     }
   };
 
@@ -377,8 +384,8 @@ export default function App() {
         body: JSON.stringify({ status: newStatus })
       });
       fetchData();
-    } catch (error) {
-      alert("Erro ao alterar status");
+    } catch (error: any) {
+      alert(`Erro ao alterar status: ${error.message}`);
     }
   };
 
@@ -395,8 +402,8 @@ export default function App() {
         setEditingSettlement(null);
         fetchData();
       }
-    } catch (error) {
-      alert("Erro ao atualizar acerto");
+    } catch (error: any) {
+      alert(`Erro ao atualizar acerto: ${error.message}`);
     }
   };
 
@@ -413,8 +420,8 @@ export default function App() {
         setEditingGeneralSale(null);
         fetchData();
       }
-    } catch (error) {
-      alert("Erro ao atualizar venda");
+    } catch (error: any) {
+      alert(`Erro ao atualizar venda: ${error.message}`);
     }
   };
 
