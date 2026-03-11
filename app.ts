@@ -2,103 +2,117 @@ import express from "express";
 import { Pool } from "pg";
 
 const DATABASE_URL = process.env.DATABASE_URL;
-if (!DATABASE_URL) {
-  throw new Error("DATABASE_URL não encontrada. Crie/ajuste o arquivo .env na raiz do projeto.");
-}
 
 const pool = new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
 
+// Flag to ensure DB init runs once per function instance
+let dbInitialized = false;
+
 async function initDb() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS authors (
-      id BIGSERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      phone TEXT,
-      email TEXT,
-      pix_key TEXT,
-      notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+  if (dbInitialized) return;
 
-    CREATE TABLE IF NOT EXISTS books (
-      id BIGSERIAL PRIMARY KEY,
-      title TEXT NOT NULL,
-      isbn TEXT,
-      author_id BIGINT NOT NULL REFERENCES authors(id) ON DELETE RESTRICT,
-      cover_price NUMERIC(12,2) NOT NULL,
-      repasse_type TEXT NOT NULL CHECK (repasse_type IN ('fixed', 'percent')),
-      repasse_value NUMERIC(12,2) NOT NULL,
-      category TEXT,
-      notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+  if (!DATABASE_URL) {
+    console.error("ERRO: DATABASE_URL não configurada no ambiente.");
+    return;
+  }
 
-    CREATE TABLE IF NOT EXISTS consignments (
-      id BIGSERIAL PRIMARY KEY,
-      book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
-      quantity INT NOT NULL CHECK (quantity >= 0),
-      entry_date DATE NOT NULL,
-      responsible TEXT,
-      notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS authors (
+        id BIGSERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        pix_key TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-    CREATE TABLE IF NOT EXISTS settlements (
-      id BIGSERIAL PRIMARY KEY,
-      author_id BIGINT NOT NULL REFERENCES authors(id) ON DELETE RESTRICT,
-      start_date DATE NOT NULL,
-      end_date DATE NOT NULL,
-      total_units INT NOT NULL DEFAULT 0,
-      total_gross NUMERIC(12,2) NOT NULL DEFAULT 0,
-      total_repasse NUMERIC(12,2) NOT NULL DEFAULT 0,
-      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid')),
-      payment_date DATE,
-      payment_method TEXT,
-      notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+      CREATE TABLE IF NOT EXISTS books (
+        id BIGSERIAL PRIMARY KEY,
+        title TEXT NOT NULL,
+        isbn TEXT,
+        author_id BIGINT NOT NULL REFERENCES authors(id) ON DELETE RESTRICT,
+        cover_price NUMERIC(12,2) NOT NULL,
+        repasse_type TEXT NOT NULL CHECK (repasse_type IN ('fixed', 'percent')),
+        repasse_value NUMERIC(12,2) NOT NULL,
+        category TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-    CREATE TABLE IF NOT EXISTS sales (
-      id BIGSERIAL PRIMARY KEY,
-      book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
-      quantity INT NOT NULL CHECK (quantity > 0),
-      sale_price NUMERIC(12,2) NOT NULL CHECK (sale_price >= 0),
-      sale_date DATE NOT NULL,
-      channel TEXT NOT NULL DEFAULT 'loja',
-      responsible TEXT,
-      reference TEXT,
-      notes TEXT,
-      settlement_id BIGINT REFERENCES settlements(id) ON DELETE SET NULL,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+      CREATE TABLE IF NOT EXISTS consignments (
+        id BIGSERIAL PRIMARY KEY,
+        book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
+        quantity INT NOT NULL CHECK (quantity >= 0),
+        entry_date DATE NOT NULL,
+        responsible TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-    CREATE TABLE IF NOT EXISTS returns (
-      id BIGSERIAL PRIMARY KEY,
-      book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
-      quantity INT NOT NULL CHECK (quantity > 0),
-      return_date DATE NOT NULL,
-      reason TEXT,
-      responsible TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+      CREATE TABLE IF NOT EXISTS settlements (
+        id BIGSERIAL PRIMARY KEY,
+        author_id BIGINT NOT NULL REFERENCES authors(id) ON DELETE RESTRICT,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        total_units INT NOT NULL DEFAULT 0,
+        total_gross NUMERIC(12,2) NOT NULL DEFAULT 0,
+        total_repasse NUMERIC(12,2) NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid')),
+        payment_date DATE,
+        payment_method TEXT,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-    CREATE TABLE IF NOT EXISTS general_sales (
-      id BIGSERIAL PRIMARY KEY,
-      amount NUMERIC(12,2) NOT NULL CHECK (amount >= 0),
-      sale_date DATE NOT NULL,
-      notes TEXT,
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
+      CREATE TABLE IF NOT EXISTS sales (
+        id BIGSERIAL PRIMARY KEY,
+        book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
+        quantity INT NOT NULL CHECK (quantity > 0),
+        sale_price NUMERIC(12,2) NOT NULL CHECK (sale_price >= 0),
+        sale_date DATE NOT NULL,
+        channel TEXT NOT NULL DEFAULT 'loja',
+        responsible TEXT,
+        reference TEXT,
+        notes TEXT,
+        settlement_id BIGINT REFERENCES settlements(id) ON DELETE SET NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
 
-    CREATE INDEX IF NOT EXISTS idx_books_author_id ON books(author_id);
-    CREATE INDEX IF NOT EXISTS idx_sales_book_id ON sales(book_id);
-    CREATE INDEX IF NOT EXISTS idx_sales_settlement_id ON sales(settlement_id);
-    CREATE INDEX IF NOT EXISTS idx_consignments_book_id ON consignments(book_id);
-    CREATE INDEX IF NOT EXISTS idx_returns_book_id ON returns(book_id);
-  `);
+      CREATE TABLE IF NOT EXISTS returns (
+        id BIGSERIAL PRIMARY KEY,
+        book_id BIGINT NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
+        quantity INT NOT NULL CHECK (quantity > 0),
+        return_date DATE NOT NULL,
+        reason TEXT,
+        responsible TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS general_sales (
+        id BIGSERIAL PRIMARY KEY,
+        amount NUMERIC(12,2) NOT NULL CHECK (amount >= 0),
+        sale_date DATE NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_books_author_id ON books(author_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_book_id ON sales(book_id);
+      CREATE INDEX IF NOT EXISTS idx_sales_settlement_id ON sales(settlement_id);
+      CREATE INDEX IF NOT EXISTS idx_consignments_book_id ON consignments(book_id);
+      CREATE INDEX IF NOT EXISTS idx_returns_book_id ON returns(book_id);
+    `);
+    dbInitialized = true;
+    console.log("Banco de dados inicializado com sucesso.");
+  } catch (err) {
+    console.error("Erro ao inicializar banco de dados:", err);
+    throw err;
+  }
 }
 
 function asDateOnly(input: any): string {
@@ -114,13 +128,16 @@ const app = express();
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Initialize DB middleware (optional but useful for first run)
+// Initialize DB middleware
 app.use(async (_req, _res, next) => {
+  if (!DATABASE_URL) {
+    return _res.status(500).json({ error: "DATABASE_URL não configurada no Netlify." });
+  }
   try {
     await initDb();
     next();
-  } catch (err) {
-    next(err);
+  } catch (err: any) {
+    _res.status(500).json({ error: "Erro ao conectar ao banco de dados: " + (err.message || err) });
   }
 });
 
@@ -649,7 +666,7 @@ app.get("/api/settlements/preview", async (req, res) => {
         repasse = gross * (Number(r.repasse_value) / 100);
       }
       totalRepasse += repasse;
-      
+
       return { ...r, gross, repasse };
     });
 
