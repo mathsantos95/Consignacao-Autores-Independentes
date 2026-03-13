@@ -44,6 +44,22 @@ import { Author, Book, InventoryItem, Settlement, Consignment, Return as ReturnT
 
 // --- Components ---
 
+const InfoSection = ({ title, items }: { title: string, items: string[] }) => (
+  <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4 mb-6">
+    <h4 className="flex items-center gap-2 text-indigo-800 font-bold text-sm mb-2">
+      <AlertCircle size={16} /> {title}
+    </h4>
+    <ul className="space-y-1">
+      {items.map((item, i) => (
+        <li key={i} className="text-indigo-600 text-xs flex items-start gap-2">
+          <span className="mt-1 w-1 h-1 rounded-full bg-indigo-400 shrink-0" />
+          {item}
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
 const SidebarItem = ({ icon: Icon, label, active, onClick }: { icon: any, label: string, active: boolean, onClick: () => void }) => (
   <button
     onClick={onClick}
@@ -198,6 +214,48 @@ export default function App() {
     };
 
     input.click();
+  };
+
+  const downloadTemplate = (type: string) => {
+    let data: any[] = [];
+    let filename = "";
+
+    if (type === 'authors') {
+      data = [{
+        name: "João Silva",
+        phone: "(11) 99999-9999",
+        email: "joao@exemplo.com",
+        pix_key: "123.456.789-00",
+        notes: "Autor de ficção científica"
+      }];
+      filename = "modelo_autores";
+    } else if (type === 'books') {
+      data = [{
+        title: "Minha Grande Obra",
+        isbn: "978-3-16-148410-0",
+        author_id: 1,
+        cover_price: 49.90,
+        repasse_type: "percent",
+        repasse_value: 60,
+        category: "Ficção",
+        notes: "Referência de author_id disponível na lista de autores"
+      }];
+      filename = "modelo_livros";
+    } else if (type === 'sales') {
+      data = [{
+        isbn: "978-3-16-148410-0",
+        quantity: 1,
+        sale_price: 49.90,
+        sale_date: new Date().toISOString().split('T')[0],
+        channel: "loja"
+      }];
+      filename = "modelo_vendas_unificadas";
+    }
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Modelo");
+    XLSX.writeFile(wb, `${filename}.xlsx`);
   };
 
   // Form states
@@ -482,6 +540,9 @@ export default function App() {
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-slate-800">Visão Geral</h2>
           <div className="flex gap-3">
+            <button onClick={() => downloadTemplate('sales')} className="btn-secondary flex items-center gap-2 text-sm">
+              <Download size={16} /> Baixar Modelo
+            </button>
             <button onClick={() => handleImportExcel('sales/unified-import')} className="btn-primary flex items-center gap-2 text-sm shadow-lg shadow-indigo-100">
               <FileText size={16} /> Importar Vendas Unificadas (Excel)
             </button>
@@ -633,6 +694,9 @@ export default function App() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Autores</h2>
         <div className="flex gap-3">
+          <button onClick={() => downloadTemplate('authors')} className="btn-secondary flex items-center gap-2 text-sm">
+            <Download size={16} /> Baixar Modelo
+          </button>
           <button onClick={() => handleImportExcel('authors/bulk')} className="btn-secondary flex items-center gap-2 text-sm">
             <Plus size={16} /> Importar Excel
           </button>
@@ -644,6 +708,15 @@ export default function App() {
           </button>
         </div>
       </div>
+
+      <InfoSection
+        title="Orientação para Importação de Autores"
+        items={[
+          "Colunas necessárias: name, phone, email, pix_key, notes",
+          "O campo 'name' é obrigatório para cada registro.",
+          "Use o modelo .xlsx para garantir a estrutura correta."
+        ]}
+      />
       <div className="card">
         <table className="w-full text-left">
           <thead className="bg-slate-50 border-b border-slate-200">
@@ -699,6 +772,9 @@ export default function App() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">Livros</h2>
         <div className="flex gap-3">
+          <button onClick={() => downloadTemplate('books')} className="btn-secondary flex items-center gap-2 text-sm">
+            <Download size={16} /> Baixar Modelo
+          </button>
           <button onClick={() => handleImportExcel('books/bulk')} className="btn-secondary flex items-center gap-2 text-sm">
             <Plus size={16} /> Importar Excel
           </button>
@@ -710,6 +786,16 @@ export default function App() {
           </button>
         </div>
       </div>
+
+      <InfoSection
+        title="Orientação para Importação de Livros"
+        items={[
+          "Campos obrigatórios: title, author_id, repasse_type, repasse_value",
+          "repasse_type deve ser 'fixed' (valor fixo) ou 'percent' (porcentagem).",
+          "author_id: Consulte o ID numérico na aba de Autores.",
+          "O campo ISBN é recomendado para facilitar a importação de vendas."
+        ]}
+      />
       <div className="card">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
