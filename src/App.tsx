@@ -953,15 +953,28 @@ export default function App() {
                   <td className="px-6 py-4 text-sm text-center font-bold">{c.quantity}</td>
                   <td className="px-6 py-4 text-sm">{c.responsible}</td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => {
-                        setPrintData({ type: 'entry', ...c });
-                        setTimeout(() => window.print(), 100);
-                      }}
-                      className="text-slate-400 hover:text-indigo-600"
-                    >
-                      <Printer size={18} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setPrintData({ type: 'entry', ...c });
+                          setTimeout(() => window.print(), 100);
+                        }}
+                        className="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-all"
+                        title="Imprimir"
+                      >
+                        <Printer size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete('consignments', c.id);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                        title="Excluir entrada"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -992,15 +1005,28 @@ export default function App() {
                   <td className="px-6 py-4 text-sm text-center font-bold">{r.quantity}</td>
                   <td className="px-6 py-4 text-sm">{r.reason}</td>
                   <td className="px-6 py-4">
-                    <button
-                      onClick={() => {
-                        setPrintData({ type: 'return', ...r });
-                        setTimeout(() => window.print(), 100);
-                      }}
-                      className="text-slate-400 hover:text-indigo-600"
-                    >
-                      <Printer size={18} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setPrintData({ type: 'return', ...r });
+                          setTimeout(() => window.print(), 100);
+                        }}
+                        className="text-slate-400 hover:text-indigo-600 p-1.5 rounded-lg hover:bg-indigo-50 transition-all"
+                        title="Imprimir"
+                      >
+                        <Printer size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete('returns', r.id);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                        title="Excluir devolução"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1031,6 +1057,7 @@ export default function App() {
               <th className="px-6 py-4 text-sm font-semibold text-slate-600">Autor</th>
               <th className="px-6 py-4 text-sm font-semibold text-slate-600">Período</th>
               <th className="px-6 py-4 text-sm font-semibold text-slate-600">Repasse Total</th>
+              <th className="px-6 py-4 text-sm font-semibold text-slate-600">Previsão Pgto</th>
               <th className="px-6 py-4 text-sm font-semibold text-slate-600">Status</th>
               <th className="px-6 py-4 text-sm font-semibold text-slate-600">Ações</th>
             </tr>
@@ -1046,6 +1073,9 @@ export default function App() {
                   {new Date(s.start_date).toLocaleDateString()} - {new Date(s.end_date).toLocaleDateString()}
                 </td>
                 <td className="px-6 py-4 font-bold text-slate-800">R$ {s.total_repasse.toFixed(2)}</td>
+                <td className="px-6 py-4 text-sm text-slate-500">
+                  {s.payment_forecast ? new Date(s.payment_forecast).toLocaleDateString() : <span className="text-slate-300">-</span>}
+                </td>
                 <td className="px-6 py-4">
                   <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${s.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                     {s.status === 'paid' ? 'Pago' : 'Pendente'}
@@ -1418,14 +1448,25 @@ export default function App() {
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Forma de Pagto</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    value={editingSettlement.payment_method || ''}
-                    onChange={e => setEditingSettlement({ ...editingSettlement, payment_method: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Forma de Pagto</label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                      value={editingSettlement.payment_method || ''}
+                      onChange={e => setEditingSettlement({ ...editingSettlement, payment_method: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Previsão Pgto</label>
+                    <input
+                      type="date"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                      value={editingSettlement.payment_forecast || ''}
+                      onChange={e => setEditingSettlement({ ...editingSettlement, payment_forecast: e.target.value })}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Observações</label>

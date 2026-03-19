@@ -59,6 +59,7 @@ export interface Settlement {
   status: 'pending' | 'paid';
   payment_date: string | null;
   payment_method: string | null;
+  payment_forecast?: string | null;
   notes: string;
   created_at: string;
 }

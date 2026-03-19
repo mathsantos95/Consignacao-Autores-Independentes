@@ -107,6 +107,10 @@ async function initDb() {
       CREATE INDEX IF NOT EXISTS idx_consignments_book_id ON consignments(book_id);
       CREATE INDEX IF NOT EXISTS idx_returns_book_id ON returns(book_id);
     `);
+    
+    // Auto-migration for existing tables
+    await pool.query(`ALTER TABLE settlements ADD COLUMN IF NOT EXISTS payment_forecast DATE;`);
+    
     dbInitialized = true;
     console.log("Banco de dados inicializado com sucesso.");
   } catch (err) {
@@ -387,6 +391,17 @@ app.post("/api/consignments", async (req, res) => {
   }
 });
 
+app.delete("/api/consignments/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID inválido" });
+    await pool.query("DELETE FROM consignments WHERE id=$1", [id]);
+    res.json({ success: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get("/api/consignments", async (_req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -512,6 +527,17 @@ app.post("/api/returns", async (req, res) => {
       [Number(book_id), Number(quantity), asDateOnly(return_date || date), reason ?? null, responsible ?? null]
     );
     res.json(rows[0]);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.delete("/api/returns/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!id) return res.status(400).json({ error: "ID inválido" });
+    await pool.query("DELETE FROM returns WHERE id=$1", [id]);
+    res.json({ success: true });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
@@ -685,7 +711,7 @@ app.get("/api/settlements/preview", async (req, res) => {
 });
 
 app.post("/api/settlements", async (req, res) => {
-  const { author_id, start_date, end_date, total_gross, total_repasse, notes, sale_ids } = req.body ?? {};
+  const { author_id, start_date, end_date, total_gross, total_repasse, notes, sale_ids, payment_forecast } = req.body ?? {};
   const authorId = Number(author_id);
   const startDate = asDateOnly(start_date);
   const endDate = asDateOnly(end_date);
@@ -738,11 +764,11 @@ app.post("/api/settlements", async (req, res) => {
 
     const { rows: settlementRows } = await client.query(
       `
-      INSERT INTO settlements (author_id, start_date, end_date, total_units, total_gross, total_repasse, status, notes)
-      VALUES ($1,$2,$3,$4,$5,$6,'pending',$7)
+      INSERT INTO settlements (author_id, start_date, end_date, total_units, total_gross, total_repasse, status, notes, payment_forecast)
+      VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,$8)
       RETURNING *
       `,
-      [authorId, startDate, endDate, finalTotalUnits, finalTotalGross, finalTotalRepasse, notes ?? null]
+      [authorId, startDate, endDate, finalTotalUnits, finalTotalGross, finalTotalRepasse, notes ?? null, payment_forecast ? asDateOnly(payment_forecast) : null]
     );
     const settlement = settlementRows[0];
 
@@ -831,6 +857,7 @@ app.put("/api/settlements/:id", async (req, res) => {
       total_gross,
       total_repasse,
       status,
+      payment_forecast,
       payment_date,
       payment_method,
       notes,
@@ -847,8 +874,9 @@ app.put("/api/settlements/:id", async (req, res) => {
               status = COALESCE($5, status),
               payment_date = $6,
               payment_method = $7,
-              notes = $8
-        WHERE id=$9
+              notes = $8,
+              payment_forecast = $9
+        WHERE id=$10
         RETURNING *`,
       [
         start_date ? asDateOnly(start_date) : null,
@@ -859,6 +887,7 @@ app.put("/api/settlements/:id", async (req, res) => {
         payment_date ? asDateOnly(payment_date) : (newStatus === "paid" ? asDateOnly(new Date()) : null),
         payment_method ?? null,
         notes ?? null,
+        payment_forecast ? asDateOnly(payment_forecast) : null,
         id,
       ]
     );
